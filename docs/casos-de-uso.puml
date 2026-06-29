@@ -1,0 +1,65 @@
+@startuml Casos de Uso - Raizes do Nordeste
+' COMO GERAR A IMAGEM:
+' 1. Acesse https://www.plantuml.com/plantuml/uml
+' 2. Apague o exemplo, cole TODO este conteudo
+' 3. A imagem aparece a direita -> baixe em PNG (menu PNG)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Cliente\n(App/Web/Totem)" as Cliente
+actor "Atendente\n(Balcao)" as Atendente
+actor "Cozinha" as Cozinha
+actor "Gerente/\nAdministrador" as Gerente
+actor "Gateway de\nPagamento (externo)" as Gateway
+
+rectangle "API Raizes do Nordeste" {
+  usecase "Cadastrar-se" as UC1
+  usecase "Fazer login" as UC2
+  usecase "Consultar cardapio\nda unidade" as UC3
+  usecase "Realizar pedido" as UC4
+  usecase "Solicitar pagamento" as UC5
+  usecase "Acompanhar status\ndo pedido" as UC6
+  usecase "Atualizar status\ndo pedido" as UC7
+  usecase "Consultar/Resgatar\nfidelidade" as UC8
+  usecase "Gerir unidades\ne produtos" as UC9
+  usecase "Movimentar estoque" as UC10
+  usecase "Consultar pedidos\n(por canal/status)" as UC11
+  usecase "Processar pagamento" as UC12
+}
+
+' Cliente
+Cliente --> UC1
+Cliente --> UC2
+Cliente --> UC3
+Cliente --> UC4
+Cliente --> UC5
+Cliente --> UC6
+Cliente --> UC8
+
+' Atendente
+Atendente --> UC2
+Atendente --> UC4
+Atendente --> UC7
+
+' Cozinha
+Cozinha --> UC2
+Cozinha --> UC7
+
+' Gerente
+Gerente --> UC2
+Gerente --> UC9
+Gerente --> UC10
+Gerente --> UC11
+Gerente --> UC7
+
+' Gateway externo
+UC12 --> Gateway
+
+' Relacionamentos entre casos de uso
+UC4 ..> UC2 : <<include>>
+UC5 ..> UC12 : <<include>>
+UC4 ..> UC5 : <<extend>>
+
+@enduml

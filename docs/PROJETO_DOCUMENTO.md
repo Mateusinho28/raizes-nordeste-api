@@ -7,41 +7,45 @@
 > 4. **Reescreva com suas palavras** os trechos marcados com 🖊️ (introdução, análise, conclusão) — não entregue o texto cru.
 > 5. Insira as imagens dos diagramas (DER e Casos de Uso) onde indicado.
 > 6. Mantenha a **Declaração de Uso de IA** no final.
-> 7. Exporte como PDF nomeado: `[SEU_RU]_Projeto_Back_End.PDF`
+> 7. Exporte como PDF nomeado: `4755436_Projeto_Back_End.PDF`
 
 ---
 
-## CAPA (modelo)
+## CAPA
 
 ```
 CENTRO UNIVERSITÁRIO INTERNACIONAL UNINTER
-CURSO DE [SEU CURSO]
+CURSO SUPERIOR DE TECNOLOGIA EM ANÁLISE E DESENVOLVIMENTO DE SISTEMAS
 
-[SEU NOME COMPLETO]
+MATEUS DA COSTA CRUZ
 
 PROJETO MULTIDISCIPLINAR — TRILHA BACK-END
 API REST PARA A REDE "RAÍZES DO NORDESTE"
 
-[POLO DE APOIO]
-[ANO — 2026]
+UNAÍ - MG
+2026
 ```
 
-## FOLHA DE ROSTO (modelo)
+## FOLHA DE ROSTO
 
 ```
-[SEU NOME COMPLETO] — RU [SEU RU]
+MATEUS DA COSTA CRUZ — RU 4755436
 
 PROJETO MULTIDISCIPLINAR — TRILHA BACK-END
 API REST PARA A REDE "RAÍZES DO NORDESTE"
 
 Trabalho apresentado como requisito parcial à
-disciplina de Projeto Multidisciplinar do curso
-de [SEU CURSO] do Centro Universitário
-Internacional UNINTER.
+disciplina de Projeto Multidisciplinar do Curso
+Superior de Tecnologia em Análise e
+Desenvolvimento de Sistemas do Centro
+Universitário Internacional UNINTER.
+Modalidade: Educação a Distância (EAD).
+Polo de apoio: Unaí - MG. Semestre: 4º.
 
 Prof.ª Me. Luciane Yanase Kanashiro
 
-[POLO] — 2026
+UNAÍ - MG
+2026
 ```
 
 ---
