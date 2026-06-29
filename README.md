@@ -168,6 +168,6 @@ O sistema **não processa pagamento real**. O módulo `gatewayPagamento.js` simu
 
 ## 📄 Evidências para correção
 
-- **Repositório:** _(inserir link público do GitHub aqui)_
+- **Repositório:** https://github.com/Mateusinho28/raizes-nordeste-api
 - **Swagger:** `http://localhost:3000/docs` (com a API rodando)
 - **Coleção Postman:** `postman/Raizes-do-Nordeste.postman_collection.json`
