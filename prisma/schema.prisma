@@ -1,0 +1,275 @@
+// ============================================================
+//  Schema Prisma - Rede "Raizes do Nordeste"
+//  Banco: SQLite (arquivo local, zero configuracao)
+//
+//  OBS: O SQLite (via Prisma) nao possui o tipo ENUM nativo.
+//  Por isso campos como canalPedido, status e perfil sao
+//  modelados como String e validados na camada de aplicacao
+//  (constantes de dominio + Zod). Os valores validos estao
+//  documentados em src/domain/enums.js
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+//  USUARIO  (clientes e funcionarios)
+//  perfil: ADMIN | GERENTE | ATENDENTE | COZINHA | CLIENTE
+// ------------------------------------------------------------
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  perfil    String   @default("CLIENTE")
+
+  // Funcionarios (gerente/atendente/cozinha) pertencem a uma unidade.
+  // Clientes nao tem unidade fixa -> campo opcional.
+  unidadeId Int?
+  unidade   Unidade? @relation(fields: [unidadeId], references: [id])
+
+  // --- LGPD ---
+  consentimentoLGPD  Boolean   @default(false)
+  consentimentoEm    DateTime?
+
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pedidos    Pedido[]
+  fidelidade Fidelidade?
+  logs       LogAuditoria[]
+
+  @@map("usuarios")
+}
+
+// ------------------------------------------------------------
+//  UNIDADE  (cada loja da rede / franquia)
+// ------------------------------------------------------------
+model Unidade {
+  id          Int      @id @default(autoincrement())
+  nome        String
+  cidade      String
+  estado      String
+  endereco    String?
+  // cozinha "COMPLETA" ou "REDUZIDA" (citado no estudo de caso)
+  tipoCozinha String   @default("COMPLETA")
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  estoques      Estoque[]
+  pedidos       Pedido[]
+  movimentacoes MovimentacaoEstoque[]
+  funcionarios  Usuario[]
+
+  @@map("unidades")
+}
+
+// ------------------------------------------------------------
+//  PRODUTO  (itens do cardapio - catalogo global da rede)
+// ------------------------------------------------------------
+model Produto {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+  categoria String   @default("GERAL")
+  preco     Float
+  // sazonal = produto disponivel so em epocas especificas (ex.: junino)
+  sazonal   Boolean  @default(false)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  estoques      Estoque[]
+  itensPedido   ItemPedido[]
+  movimentacoes MovimentacaoEstoque[]
+
+  @@map("produtos")
+}
+
+// ------------------------------------------------------------
+//  ESTOQUE  (saldo de um produto EM uma unidade)
+//  Tambem define o cardapio daquela unidade: so aparece no
+//  cardapio o produto que tem registro de estoque ativo.
+// ------------------------------------------------------------
+model Estoque {
+  id         Int     @id @default(autoincrement())
+  unidadeId  Int
+  produtoId  Int
+  quantidade Int     @default(0)
+  // disponivel permite "esconder" um item do cardapio sem apagar o saldo
+  disponivel Boolean @default(true)
+
+  unidade Unidade @relation(fields: [unidadeId], references: [id])
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  updatedAt DateTime @updatedAt
+
+  // um produto so pode ter UM registro de estoque por unidade
+  @@unique([unidadeId, produtoId])
+  @@map("estoques")
+}
+
+// ------------------------------------------------------------
+//  MOVIMENTACAO DE ESTOQUE  (historico de entradas/saidas)
+//  tipo: ENTRADA | SAIDA
+// ------------------------------------------------------------
+model MovimentacaoEstoque {
+  id         Int      @id @default(autoincrement())
+  unidadeId  Int
+  produtoId  Int
+  tipo       String
+  quantidade Int
+  motivo     String?
+  createdAt  DateTime @default(now())
+
+  unidade Unidade @relation(fields: [unidadeId], references: [id])
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@map("movimentacoes_estoque")
+}
+
+// ------------------------------------------------------------
+//  PEDIDO  (nucleo do fluxo critico)
+//  canalPedido: APP | TOTEM | BALCAO | PICKUP | WEB
+//  status: AGUARDANDO_PAGAMENTO | PAGO | EM_PREPARO | PRONTO
+//          | ENTREGUE | CANCELADO
+// ------------------------------------------------------------
+model Pedido {
+  id          Int      @id @default(autoincrement())
+  clienteId   Int
+  unidadeId   Int
+  canalPedido String
+  status      String   @default("AGUARDANDO_PAGAMENTO")
+  total       Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cliente Usuario @relation(fields: [clienteId], references: [id])
+  unidade Unidade @relation(fields: [unidadeId], references: [id])
+
+  itens     ItemPedido[]
+  pagamento Pagamento?
+
+  @@index([canalPedido])
+  @@index([status])
+  @@map("pedidos")
+}
+
+// ------------------------------------------------------------
+//  ITEM DO PEDIDO  (1 pedido possui N itens)
+//  precoUnitario é "congelado" no momento da compra.
+// ------------------------------------------------------------
+model ItemPedido {
+  id            Int   @id @default(autoincrement())
+  pedidoId      Int
+  produtoId     Int
+  quantidade    Int
+  precoUnitario Float
+
+  pedido  Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto Produto @relation(fields: [produtoId], references: [id])
+
+  @@map("itens_pedido")
+}
+
+// ------------------------------------------------------------
+//  PAGAMENTO  (DESACOPLADO do pedido - relacao 1:1)
+//  Registra a solicitacao e o retorno do gateway externo (mock).
+//  status: PENDENTE | APROVADO | RECUSADO
+// ------------------------------------------------------------
+model Pagamento {
+  id             Int      @id @default(autoincrement())
+  pedidoId       Int      @unique
+  status         String   @default("PENDENTE")
+  metodo         String // PIX | CARTAO | MOCK
+  valor          Float
+  // id da transacao retornado pelo gateway externo (mock)
+  transacaoId    String?
+  // payload bruto retornado pelo gateway (guardado como texto JSON)
+  gatewayPayload String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  pedido Pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@map("pagamentos")
+}
+
+// ------------------------------------------------------------
+//  FIDELIDADE  (saldo de pontos por cliente - 1:1 com Usuario)
+//  So existe se o cliente deu consentimento (LGPD).
+// ------------------------------------------------------------
+model Fidelidade {
+  id         Int      @id @default(autoincrement())
+  clienteId  Int      @unique
+  saldoPontos Int     @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  cliente       Usuario                  @relation(fields: [clienteId], references: [id])
+  movimentacoes MovimentacaoFidelidade[]
+
+  @@map("fidelidade")
+}
+
+// ------------------------------------------------------------
+//  MOVIMENTACAO DE FIDELIDADE  (historico de pontos)
+//  tipo: ACUMULO | RESGATE
+// ------------------------------------------------------------
+model MovimentacaoFidelidade {
+  id           Int      @id @default(autoincrement())
+  fidelidadeId Int
+  tipo         String
+  pontos       Int
+  descricao    String?
+  pedidoId     Int?
+  createdAt    DateTime @default(now())
+
+  fidelidade Fidelidade @relation(fields: [fidelidadeId], references: [id])
+
+  @@map("movimentacoes_fidelidade")
+}
+
+// ------------------------------------------------------------
+//  PROMOCAO / CAMPANHA  (campanhas segmentadas)
+// ------------------------------------------------------------
+model Promocao {
+  id                 Int      @id @default(autoincrement())
+  nome               String
+  descricao          String?
+  percentualDesconto Float    @default(0)
+  ativo              Boolean  @default(true)
+  inicio             DateTime @default(now())
+  fim                DateTime?
+  createdAt          DateTime @default(now())
+
+  @@map("promocoes")
+}
+
+// ------------------------------------------------------------
+//  LOG DE AUDITORIA  (rastreabilidade de acoes sensiveis)
+//  Ex.: criacao/cancelamento de pedido, mudanca de status,
+//  pagamento. Exigencia de LGPD/auditoria do estudo de caso.
+// ------------------------------------------------------------
+model LogAuditoria {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int?
+  acao       String
+  entidade   String
+  entidadeId String?
+  detalhe    String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  usuario Usuario? @relation(fields: [usuarioId], references: [id])
+
+  @@map("logs_auditoria")
+}
